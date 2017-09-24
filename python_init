@@ -1,0 +1,92 @@
+import twitter
+import sys, os
+import pandas as pd
+
+'''important for reading JSON'''
+from pprint import pprint
+
+'''important for dealing with twitter rate limits'''
+from time import localtime, strftime, sleep, time
+
+'''
+    Create a file to store your credentials
+'''
+cons_oauth_file = 'c.xxx'
+# if file exists, get the credentials variables from the file
+if os.path.exists(cons_oauth_file):
+    constoken, conssecret = twitter.read_token_file(cons_oauth_file)
+else:
+    constoken = raw_input("What is your app's 'Consumer Key'?").strip()
+    conssecret = raw_input("What is your app's 'Consumer Secret'?").strip()
+    wf = open(cons_oauth_file, 'w');
+    wf.write(constoken + '\n' + conssecret)
+
+'''
+    We we'll authorize this app through your Twitter account. 
+    This code block will open a new tab, prompt to activate the app, 
+    and provide you with a PIN to enter back here. 
+    This OAuth registration is handled by the twitter.oauth_dance function.
+'''
+app_oauth_file = 'a.xxx'
+# if user not already authorised
+if not os.path.exists(app_oauth_file):
+    # perform oAuth Dance
+    twitter.oauth_dance("your app", constoken, conssecret, app_oauth_file)
+# import user credentials
+apptoken, appsecret = twitter.read_token_file(app_oauth_file)
+
+'''
+    Setting up an object that uses your credentials to access the Twitter REST API 
+    and return structured Twitter data
+'''
+tsearch = twitter.Twitter(auth=twitter.OAuth(apptoken, appsecret, constoken, conssecret))
+
+# Search Term
+# Note: use + instead of spaces if needed
+term = 'AdonisGeorgiadi -RT'
+
+res = tsearch.search.tweets(q=term,
+                            count=10,
+                            result_type='recent')
+
+pprint(res['statuses'][0])
+
+print('\n')
+print('\n')
+
+def exctract_tweet_URL(j):
+    '''
+    Convert tweet information to url
+    '''
+    return 'http://twitter.com/' + j['user']['screen_name'] + '/status/' + str(j['id'])
+
+t = res['statuses'][0]
+
+print(exctract_tweet_URL(t))
+
+print('\n')
+print('\n')
+
+def prunetweet(t):
+    d = {k: t[k] for k in ['created_at','favorite_count','retweet_count','id','in_reply_to_status_id','text']}    #keeping only relevant top-level features (user features handled below)
+    d['user'] = {k: t['user'][k] for k in ['id','location','friends_count','followers_count','name','screen_name']} #keeping only relevant features
+    return d
+
+pprint(prunetweet(t))
+
+print('\n')
+print('\n')
+
+#################################################################################
+
+'''
+    New Search Terms
+'''
+term = "%22good+morning%22"
+count = 25
+
+res = tsearch.search.tweets(q=term, count=count, result_type='recent')
+
+for i in range (0, len(res['statuses'])):
+    print('\n', i, exctract_tweet_URL(res['statuses'][i]))
+    pprint(prunetweet(res['statuses'][i]))
